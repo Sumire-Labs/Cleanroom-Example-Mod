@@ -1,0 +1,66 @@
+name: Releases
+
+on:
+  push:
+    tags:
+      - "*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+      - uses: gradle/actions/setup-gradle@v6
+        name: Set up Gradle
+      - name: Read release version and type
+        id: version
+        run: |
+          echo "value=$(./gradlew -q --console=plain printVersion)" >> "$GITHUB_OUTPUT"
+          echo "type=$(./gradlew -q --console=plain printReleaseType)" >> "$GITHUB_OUTPUT"
+      - name: Build release artifacts
+        run: ./gradlew build -Penable_mixin=true
+      - name: Select release artifacts
+        id: artifacts
+        shell: bash
+        run: |
+          shopt -s nullglob
+          runtime=(build/libs/*.jar)
+          filtered=()
+          for artifact in "${runtime[@]}"; do
+            case "$artifact" in
+              *-mcp.jar|*-sources.jar|*-javadoc.jar) ;;
+              *) filtered+=("$artifact") ;;
+            esac
+          done
+
+          if (( ${#filtered[@]} != 1 )); then
+            echo "Expected exactly one runtime jar, found ${#filtered[@]}" >&2
+            printf '%s\n' "${filtered[@]}" >&2
+            exit 1
+          fi
+
+          # Put the runtime jar first so it is the primary release asset.
+          artifacts=("${filtered[0]}")
+          for pattern in 'build/libs/*-mcp.jar' 'build/libs/*-sources.jar' 'build/libs/*-javadoc.jar'; do
+            for artifact in $pattern; do
+              [[ -f "$artifact" ]] && artifacts+=("$artifact")
+            done
+          done
+          printf 'list=%s\n' "$(IFS=,; echo "${artifacts[*]}")" >> "$GITHUB_OUTPUT"
+      - uses: ncipollo/release-action@v1
+        with:
+          artifacts: ${{ steps.artifacts.outputs.list }}
+          generateReleaseNotes: true
+          name: ${{ steps.version.outputs.value }}
+          prerelease: ${{ steps.version.outputs.type != 'release' }}

@@ -1,0 +1,25 @@
+def remotePublishing = publish_to_maven.toBoolean()
+def localPublishing = publish_to_local_maven.toBoolean()
+if (remotePublishing || localPublishing) {
+    publishing {
+        publications {
+            mavenJava(MavenPublication) {
+                // Development artifact is MCP-named; runtime artifact is SRG-named.
+                from components.java
+                groupId = root_package
+                artifactId = mod_id
+                artifact(tasks.reobfJar) { classifier = 'srg' }
+            }
+        }
+        if (remotePublishing && !localPublishing) {
+            if (maven_url.isBlank()) throw new GradleException('Set maven_url before enabling publish_to_maven.')
+            repositories {
+                maven {
+                    name = maven_name
+                    url = maven_url
+                    credentials(PasswordCredentials)
+                }
+            }
+        }
+    }
+}
