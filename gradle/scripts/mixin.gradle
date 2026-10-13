@@ -1,60 +1,46 @@
-// Mixin AP supplies refmaps and member mappings; CleanroomGradle reobfuscates.
+// Refmap generation and processor versions are provided by CleanroomGradle 0.20.
+// The extra mapping output also preserves @Shadow/@Overwrite member renaming.
 if (mixinEnabled) {
-    def refmapDirectory = layout.buildDirectory.dir('generated/mixin')
-    def refmapFile = refmapDirectory.map { it.file("${mod_id}.refmap.json") }
-    def extraMappings = layout.buildDirectory.file('generated/mixin-mappings/mixin.srg')
-    def srgMapping = layout.buildDirectory.file('generated/mixin-mappings/mcp-to-srg.srg')
-    def mergedMappings = layout.buildDirectory.file('generated/mixin-mappings/merged.srg')
+    if (providers.gradleProperty('cg.userdev.refmap').get().isBlank()) {
+        throw new GradleException('Set cg.userdev.refmap when enable_mixin=true.')
+    }
+    def extraMappings = layout.buildDirectory.file('generated/mixin-mappings/mixin.tsrg')
+    def mergedMappings = layout.buildDirectory.file('generated/mixin-mappings/merged.tsrg')
     def extractedMapping = tasks.named('extractUserdevMcpToSrg')
-    def convertMappings = tasks.register('prepareMixinMappings') {
-        group = 'build setup'
-        description = 'Converts Cleanroom mappings to the SRG format accepted by Mixin AP.'
-        dependsOn extractedMapping
-        inputs.file(extractedMapping.flatMap { it.output })
-        outputs.file(srgMapping)
-        doLast {
-            def output = srgMapping.get().asFile
-            output.parentFile.mkdirs()
-            net.minecraftforge.srgutils.IMappingFile.load(inputs.files.singleFile)
-                    .write(output.toPath(), net.minecraftforge.srgutils.IMappingFile.Format.SRG, false)
-        }
-    }
     compileJava {
-        dependsOn convertMappings
-        inputs.file(srgMapping)
-        outputs.file(refmapFile)
         outputs.file(extraMappings)
-        options.compilerArgs += [
-                '-AdefaultObfuscationEnv=searge',
-                "-AreobfSrgFile=${srgMapping.get().asFile}",
-                "-AoutSrgFile=${extraMappings.get().asFile}",
-                "-AoutRefMapFile=${refmapFile.get().asFile}"
-        ]
-        doFirst {
-            refmapDirectory.get().asFile.mkdirs()
-            extraMappings.get().asFile.parentFile.mkdirs()
-        }
+        options.compilerArgs += "-AoutTsrgFile=${extraMappings.get().asFile}"
+        doFirst { extraMappings.get().asFile.parentFile.mkdirs() }
     }
-    sourceSets.main.resources.srcDir(refmapDirectory)
-    processResources.dependsOn compileJava
-    tasks.matching { it.name == 'sourcesJar' }.configureEach { dependsOn compileJava }
-
     def mergeMappings = tasks.register('mergeMixinMappings') {
         group = 'build setup'
-        description = 'Merges Minecraft and Mixin member mappings for the single-file renamer input.'
-        dependsOn compileJava
-        inputs.file(srgMapping)
+        description = 'Merges Minecraft and Mixin member mappings for the reobfuscated jar.'
+        dependsOn compileJava, extractedMapping
+        inputs.file(extractedMapping.flatMap { it.output })
         inputs.file(extraMappings)
         outputs.file(mergedMappings)
         doLast {
-            def base = net.minecraftforge.srgutils.IMappingFile.load(srgMapping.get().asFile)
+            def base = net.minecraftforge.srgutils.IMappingFile.load(extractedMapping.get().output.get().asFile)
             def extra = net.minecraftforge.srgutils.IMappingFile.load(extraMappings.get().asFile)
             base.merge(extra).write(mergedMappings.get().asFile.toPath(),
-                    net.minecraftforge.srgutils.IMappingFile.Format.SRG, false)
+                    net.minecraftforge.srgutils.IMappingFile.Format.TSRG2, false)
         }
     }
     reobfJar {
         dependsOn mergeMappings
         map.setFrom(mergedMappings)
     }
+} else {
+    // The global native-refmap option is set for the enabled build. Suppress it for this variant.
+    compileJava.options.compilerArgumentProviders.removeAll {
+        it instanceof com.cleanroommc.gradle.env.UserDevTasks.RefmapArguments
+    }
+    configurations.annotationProcessor.withDependencies { dependencies ->
+        dependencies.removeIf {
+            it.group == 'com.cleanroommc' && it.name in ['cleanmix', 'mixinextras-common']
+        }
+    }
+    // Also exclude stale generated files when switching variants without a clean checkout.
+    def nativeRefmap = providers.gradleProperty('cg.userdev.refmap').get()
+    tasks.withType(Jar).configureEach { exclude '*.refmap.json', nativeRefmap }
 }

@@ -51,7 +51,7 @@ dependencies {
         // Loader runtime dependencies are not necessarily exposed on the API compile classpath.
         compileOnly("com.cleanroommc:cleanmix:${cleanmix_version}") { transitive = false }
         compileOnly("com.cleanroommc:mixinextras-common:${mixinextras_version}") { transitive = false }
-        annotationProcessor "com.cleanroommc:cleanmix:${cleanmix_version}"
+        // CleanroomGradle selects annotation processors from the loader's dependency graph.
     }
     if (use_asset_mover.toBoolean()) implementation "com.cleanroommc:assetmover:${asset_mover_version}"
     if (enable_junit_testing.toBoolean()) {
@@ -73,6 +73,7 @@ tokenEnvoy {
         set 'MOD_NAME', mod_name
         set 'MOD_VERSION', project.version.toString()
         set 'MOD_PACKAGE', modPackage
+        set 'MIXIN_REFMAP', providers.gradleProperty('cg.userdev.refmap')
         set 'MOD_ID_JSON', JsonOutput.toJson(mod_id)
         set 'MOD_NAME_JSON', JsonOutput.toJson(mod_name)
         set 'MOD_VERSION_JSON', JsonOutput.toJson(project.version.toString())
@@ -147,6 +148,7 @@ if (shadowEnabled) {
 }
 reobfJar { legacyAccessTransformers.set(atEnabled) }
 apply from: 'gradle/scripts/publishing.gradle'
+apply from: 'gradle/scripts/verification.gradle'
 apply from: 'gradle/scripts/extra.gradle'
 
 // Upload sites use alpha/beta/release; RC builds are published in their beta channel.

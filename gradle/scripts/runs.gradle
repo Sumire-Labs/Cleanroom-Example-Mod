@@ -2,13 +2,19 @@ cleanroom.runs {
     ['client', 'server'].each { runName ->
         named(runName) {
             configure {
+                // Foundation 0.22.0 otherwise splits Mod/annotation classes between app and launch loaders.
+                // Matches the official 0.7.0 template's development-launch workaround.
+                systemProperty 'foundation.loadsall', true
+                // CG 0.20 adds these as raw JVM arguments; remove them so the template switch wins.
+                setJvmArgs((jvmArgs ?: []).findAll {
+                    !it.startsWith('-Dmixin.debug.export=') && !it.startsWith('-Dmixin.checks.interfaces=')
+                })
                 username = minecraft_username
                 if (!extra_jvm_args.isBlank()) jvmArgs extra_jvm_args.trim().split(/\s+/).toList()
                 systemProperty 'mixin.debug.export', enable_mixin_debug
                 systemProperty 'mixin.checks.interfaces', enable_mixin_debug
                 if (mixinEnabled) {
                     systemProperty 'crl.dev.mixin', "${mod_id}.mixin.json"
-                    systemProperty 'mixin.env.disableRefMap', true
                 }
                 if (enable_foundation_debug.toBoolean()) {
                     systemProperty 'foundation.dump', true
