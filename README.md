@@ -1,9 +1,54 @@
 # Cleanroom Example Mod
 
-このテンプレートは現時点では使用できません。
-
-Cleanroom0.7.0に向けてCleanroomGradle, Cleanroom Versioning, TokenEnvoyを使えるModTemplateを開発しようとした(?)
+Cleanroom 0.7.0向けのJava専用Modテンプレートです。
+CleanroomGradle 0.21.1、Cleanroom Versioning、TokenEnvoy、Foojayを使用します。
 Javaパッケージの既定のルートは `com.sumirelabs`
+
+## 開発環境とビルド
+
+Java 25 JDKをGradleの実行JVMに設定し、Gradle Wrapperを使用してください。
+Foojayはコンパイル・ゲーム起動用toolchainを解決します。
+公開済みの`com.cleanroommc:cleanroom-userdev:0.7.0`を使うため、
+Cleanroom本体のローカルビルドやMaven Localの有効化は不要です。
+Loaderのリリースタグは`0.7.0-alpha`ですが、Mavenのバージョンは`0.7.0`です。
+
+```powershell
+./gradlew.bat clean build
+./gradlew.bat runClient
+./gradlew.bat runServer
+```
+
+Linux/macOSでは`./gradlew`を使います。IntelliJではGradle JVMにJava 25を選択してください。
+サーバーの初回起動にはMinecraft EULAへの同意が必要です。
+初回はuserdevのダウンロードと変換に時間がかかります。
+配布用jarは`build/libs/<mod_id>-<version>.jar`、開発用jarは`*-mcp.jar`です。
+`check`と`build`は`verifyModJar`で配布用メタデータ・refmap・Mixin無効時の除外も検査します。
+
+## Mixinと任意機能
+
+Mixinは標準ONで、通常・Mixin構成を単一ブランチにまとめています。
+
+```powershell
+./gradlew.bat clean build -Penable_mixin=false
+```
+
+`src/mixin/java`とMixin設定は無効構成から除外されます。
+CleanroomGradleの`cg.userdev.refmap`でrefmapを生成し、processorのバージョンはLoaderに合わせて自動選択します。
+追加のメンバーマッピングを統合する処理を残し、`@Shadow`などの配布時の名前変換にも対応します。
+開発起動でもrefmapを有効にし、CleanMixの開発用remapperを使います。
+開発起動には公式移行版と同じ`foundation.loadsall=true`を設定し、
+Foundation 0.22.0でのMod/注釈クラスのクラスローダー不一致を回避しています。
+
+Mod ID・パッケージを変更する場合はJavaの配置・宣言と、`cg.userdev.refmap`の固有名も合わせて変更してください。
+`use_access_transformer`、`is_coremod`、`enable_shadow`、`use_asset_mover`は個別に有効化できます。
+ATは`src/main/resources/META-INF/<mod_id>_at.cfg`へMCP名で記述します。
+ATを有効にして初めてIDEへ同期する際は`prepareAccessTransformer`を一度実行してください。
+依存関係は`gradle/scripts/dependencies.gradle`、独自設定は`gradle/scripts/extra.gradle`へ記述します。
+他ModのSRG jarには`deobf(...)`、依存jarの同梱には`contain`、Shadow対象には`shade`を使います。
+CleanMix/MixinExtrasのコンパイル用バージョンは`gradle.properties`でLoaderに合わせて指定します。
+LWJGLYはuserdevが指定するバージョンを使用します。2026-10-13時点で0.7.0は1.0.0を指定しており、
+LWJGLY 1.0.1やLoaderの直近のSDL/macOS修正をすべて取り込むには対応するLoader/userdevの公開を待つ必要があります。
+テンプレート側からLWJGLYの強制差し替えやLoaderの初期化処理へのパッチは行っていません。
 
 ## バージョン管理
 
