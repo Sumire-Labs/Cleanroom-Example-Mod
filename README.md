@@ -1,16 +1,17 @@
 # Cleanroom Example Mod
 
-Cleanroom 0.7.0向けのJava専用Modテンプレートです。
-CleanroomGradle 0.21.1、Cleanroom Versioning、TokenEnvoy、Foojayを使用します。
+Cleanroom 0.7.2-alpha向けのJava専用Modテンプレートです。
+CleanroomGradle 0.22.0、Cleanroom Versioning、TokenEnvoy、Foojayを使用します。
 Javaパッケージの既定のルートは `com.sumirelabs`
 
 ## 開発環境とビルド
 
 Java 25 JDKをGradleの実行JVMに設定し、Gradle Wrapperを使用してください。
 Foojayはコンパイル・ゲーム起動用toolchainを解決します。
-公開済みの`com.cleanroommc:cleanroom-userdev:0.7.0`を使うため、
+公開済みの`com.cleanroommc:cleanroom-userdev:0.7.2-alpha`を使うため、
 Cleanroom本体のローカルビルドやMaven Localの有効化は不要です。
-Loaderのリリースタグは`0.7.0-alpha`ですが、Mavenのバージョンは`0.7.0`です。
+LoaderのMaven座標にも`-alpha`が含まれます。旧`0.7.0`座標は利用できません。
+これはLoader依存物のバージョンであり、このModのGitバージョン管理とは別です。
 
 ```powershell
 ./gradlew.bat clean build
@@ -46,8 +47,7 @@ ATを有効にして初めてIDEへ同期する際は`prepareAccessTransformer`�
 依存関係は`gradle/scripts/dependencies.gradle`、独自設定は`gradle/scripts/extra.gradle`へ記述します。
 他ModのSRG jarには`deobf(...)`、依存jarの同梱には`contain`、Shadow対象には`shade`を使います。
 CleanMix/MixinExtrasのコンパイル用バージョンは`gradle.properties`でLoaderに合わせて指定します。
-LWJGLYはuserdevが指定するバージョンを使用します。2026-10-13時点で0.7.0は1.0.0を指定しており、
-LWJGLY 1.0.1やLoaderの直近のSDL/macOS修正をすべて取り込むには対応するLoader/userdevの公開を待つ必要があります。
+LWJGLYはuserdevが指定するバージョンを使用します。Loaderの更新は`cleanroom_version`で追従します。
 テンプレート側からLWJGLYの強制差し替えやLoaderの初期化処理へのパッチは行っていません。
 
 ## バージョン管理
